@@ -1,0 +1,15 @@
+Output format: 1920x1080 pixels (16:9).
+
+Layout pattern: Overlay: a dark semi-transparent layer covers the full image, with all text centered on top.
+
+Element placement:
+  - "Dream big. Start small." (text) -> positioned at center
+
+Visual style — typography: elegant serif, large.
+
+Do NOT include: people or faces, no neon colors, no city skylines.
+
+Additional details:
+Background: a calm misty forest at dawn.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

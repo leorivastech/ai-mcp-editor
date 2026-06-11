@@ -1,0 +1,5 @@
+Output format: 1024x1024 pixels.
+
+Layout pattern: Full bleed: the image covers the entire canvas edge to edge, with text overlaid on top.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

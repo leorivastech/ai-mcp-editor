@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "name": "quote overlay",
+  "size": { "width": 1920, "height": 1080, "aspect_label": "16:9" },
+  "layout": "overlay",
+  "elements": [
+    { "kind": "text", "content": "Dream big. Start small.", "zone": "center" }
+  ],
+  "style": {
+    "typography": "elegant serif, large"
+  },
+  "restrictions": ["no_people", "no neon colors", "no city skylines"],
+  "free_text": "Background: a calm misty forest at dawn.",
+  "compiler_version": 1
+}

@@ -1,0 +1,17 @@
+Output format: 1080x1350 pixels (4:5).
+
+Layout pattern: Diagonal split: the canvas is divided into two contrasting triangular zones by a diagonal line.
+
+Element placement:
+  - "50% OFF" (text) -> positioned at top-right
+  - a steaming artisan pizza on a slate board (subject) -> positioned at center
+  - "Only this weekend" (text) -> positioned at bottom-center
+
+Visual style — art style: photorealistic, color palette: #1a1a2e #e94560, typography: bold condensed sans-serif, lighting: dramatic side lighting.
+
+Do NOT include: watermarks, any text other than the quoted texts, no cartoon characters.
+
+Additional details:
+The diagonal line runs from bottom-left to top-right. The dark zone holds the texts.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

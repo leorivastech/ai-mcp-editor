@@ -1,0 +1,10 @@
+Output format: 1080x1920 pixels (9:16).
+
+Layout pattern: Hero layout: the image fills the upper 80% of the canvas, with a solid bar across the bottom.
+
+Element placement:
+  - a modern running shoe floating with motion blur (subject) -> positioned at center
+
+Visual style — art style: cinematic photo, lighting: neon glow.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

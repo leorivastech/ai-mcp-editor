@@ -1,0 +1,30 @@
+[project]
+name = "ai-mcp-editor"
+version = "0.1.0"
+description = "Visual preset editor for AI image prompts — an MCP app for ChatGPT with an in-chat widget. Deterministic prompts from reusable presets."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Leonel Rivas" }]
+dependencies = [
+    "fastmcp>=3.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["core", "core.compiler", "server"]
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.css", "*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["core/tests", "server/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

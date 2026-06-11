@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "promo dark",
+  "size": { "width": 1080, "height": 1350, "aspect_label": "4:5" },
+  "layout": "diagonal",
+  "elements": [
+    { "kind": "text", "content": "50% OFF", "zone": "top-right" },
+    { "kind": "subject", "content": "a steaming artisan pizza on a slate board", "zone": "center" },
+    { "kind": "text", "content": "Only this weekend", "zone": "bottom-center" }
+  ],
+  "style": {
+    "art_style": "photorealistic",
+    "palette": ["#1A1A2E", "#E94560"],
+    "typography": "bold condensed sans-serif",
+    "lighting": "dramatic side lighting"
+  },
+  "restrictions": ["no_watermarks", "no_extra_text", "no cartoon characters"],
+  "free_text": "The diagonal line runs from bottom-left to top-right. The dark zone holds the texts.",
+  "compiler_version": 1
+}

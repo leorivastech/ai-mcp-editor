@@ -1,0 +1,15 @@
+Output format: 1080x1080 pixels (1:1).
+
+Layout pattern: 2x2 grid: four equal quadrants, each with its own content.
+
+Element placement:
+  - a burger (subject) -> positioned at top-left
+  - golden french fries (subject) -> positioned at top-right
+  - a chocolate milkshake (subject) -> positioned at bottom-left
+  - "COMBO $9.99" (text) -> positioned at bottom-right
+
+Visual style — color palette: #f4a300 #2b2b2b #ffffff.
+
+Do NOT include: watermarks, any text other than the quoted texts.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

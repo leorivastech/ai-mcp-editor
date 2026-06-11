@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "name": "menu grid",
+  "size": { "width": 1080, "height": 1080, "aspect_label": "1:1" },
+  "layout": "grid_2x2",
+  "elements": [
+    { "kind": "subject", "content": "a burger", "zone": "top-left" },
+    { "kind": "subject", "content": "golden french fries", "zone": "top-right" },
+    { "kind": "subject", "content": "a chocolate milkshake", "zone": "bottom-left" },
+    { "kind": "text", "content": "COMBO $9.99", "zone": "bottom-right" }
+  ],
+  "style": {
+    "palette": ["#F4A300", "#2B2B2B", "#FFFFFF"]
+  },
+  "restrictions": ["no_watermarks", "no_extra_text"],
+  "compiler_version": 1
+}

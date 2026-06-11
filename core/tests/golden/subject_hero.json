@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "size": { "width": 1080, "height": 1920, "aspect_label": "9:16" },
+  "layout": "hero_cta",
+  "elements": [
+    { "kind": "subject", "content": "a modern running shoe floating with motion blur", "zone": "center" }
+  ],
+  "style": {
+    "art_style": "cinematic photo",
+    "lighting": "neon glow"
+  },
+  "compiler_version": 1
+}
