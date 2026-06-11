@@ -14,6 +14,7 @@ Apps SDK conventions used here:
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 
 from fastmcp import FastMCP
@@ -39,14 +40,21 @@ WIDGET_URI = "ui://widget/preset-editor.html"
 mcp = FastMCP(
     name="AI Image Preset Editor",
     instructions=(
-        "Visual preset editor for AI image prompts. Use open_preset_editor to "
-        "let the user compose a preset (size, layout, texts, style, palette, "
-        "restrictions) in an interactive widget; the compiled prompt is "
-        "deterministic — the same preset always produces the same prompt. "
-        "When the user asks to generate the image, use the compiled prompt "
-        "verbatim with your image generation tool. Presets can be saved and "
-        "recalled by name ('save it as promo dark', 'the one I used "
-        "yesterday' → list_presets sorted by last_used)."
+        "Visual preset editor for AI image prompts.\n\n"
+        "WORKFLOW: When the user wants to compose/design an image, call "
+        "open_preset_editor — they build the preset visually (size, layout, "
+        "texts, style, palette, restrictions) and the compiled prompt updates "
+        "live inside the widget. The compiled prompt is deterministic: the "
+        "same preset always produces the exact same prompt.\n\n"
+        "GENERATING: When the user asks to generate the image (or the widget "
+        "sends a follow-up message), use the compiled prompt VERBATIM with "
+        "your image generation tool — do not rewrite, summarize or embellish "
+        "it; determinism is the whole point.\n\n"
+        "PRESETS: save_preset stores by name ('save it as promo dark'); "
+        "list_presets supports natural recall ('the one I used yesterday' → "
+        "sort=last_used); open_preset_editor with preset_name re-opens the "
+        "editor pre-loaded for editing. If you need to build or modify a "
+        "preset JSON yourself, get_preset_options lists every valid value."
     ),
 )
 
@@ -83,10 +91,41 @@ def _validate(preset: dict[str, Any]) -> Preset:
             "palette and restrictions, and watch the prompt build live."
         ),
         "openai/widgetPrefersBorder": True,
+        # The widget is fully self-contained (everything inlined), so the CSP
+        # allows no external connections or resources at all.
+        "openai/widgetCSP": {
+            "connect_domains": [],
+            "resource_domains": [],
+        },
+        "openai/widgetDomain": os.environ.get(
+            "WIDGET_DOMAIN", "https://leorivastech.github.io"
+        ),
     },
 )
 def preset_editor_widget() -> str:
     return build_widget_html()
+
+
+# --- output schemas (shape of structured_content, host-facing) ---------------
+
+_PRESET_OBJECT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "description": "A preset (see get_preset_options for valid values)",
+}
+
+_PRESET_SUMMARY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "created_at": {"type": "string"},
+        "updated_at": {"type": "string"},
+        "last_used_at": {"type": "string"},
+        "layout": {"type": ["string", "null"]},
+        "size": {"type": ["object", "null"]},
+    },
+    "required": ["id", "name", "created_at", "updated_at", "last_used_at"],
+}
 
 
 # --- tools -------------------------------------------------------------------
@@ -98,6 +137,20 @@ def preset_editor_widget() -> str:
         "openai/toolInvocation/invoking": "Opening the preset editor…",
         "openai/toolInvocation/invoked": "Preset editor ready",
         "openai/widgetAccessible": True,
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "loaded_preset_name": {
+                "type": ["string", "null"],
+                "description": "Name of the pre-loaded preset, if any",
+            },
+            "prompt": {
+                "type": ["string", "null"],
+                "description": "Compiled prompt of the pre-loaded preset",
+            },
+        },
+        "required": ["loaded_preset_name", "prompt"],
     },
 )
 def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
@@ -131,7 +184,20 @@ def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
     )
 
 
-@mcp.tool(name="compile_preset", annotations={"readOnlyHint": True})
+@mcp.tool(
+    name="compile_preset",
+    annotations={"readOnlyHint": True},
+    output_schema={
+        "type": "object",
+        "properties": {
+            "prompt": {
+                "type": "string",
+                "description": "The deterministic compiled image prompt",
+            }
+        },
+        "required": ["prompt"],
+    },
+)
 def compile_preset_tool(preset: dict[str, Any]) -> ToolResult:
     """Compile a preset (JSON) into its deterministic image prompt. The same
     preset always yields the exact same prompt."""
@@ -140,7 +206,19 @@ def compile_preset_tool(preset: dict[str, Any]) -> ToolResult:
     return ToolResult(content=prompt, structured_content={"prompt": prompt})
 
 
-@mcp.tool(meta={"openai/widgetAccessible": True})
+@mcp.tool(
+    meta={"openai/widgetAccessible": True},
+    output_schema={
+        "type": "object",
+        "properties": {
+            "saved": {"type": "boolean"},
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+            "updated_at": {"type": "string"},
+        },
+        "required": ["saved", "id", "name", "updated_at"],
+    },
+)
 def save_preset(name: str, preset: dict[str, Any]) -> ToolResult:
     """Save (or update) a preset under a name, e.g. 'promo dark'. Saved
     presets can be re-opened later with open_preset_editor or get_preset."""
@@ -157,7 +235,16 @@ def save_preset(name: str, preset: dict[str, Any]) -> ToolResult:
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    output_schema={
+        "type": "object",
+        "properties": {
+            "presets": {"type": "array", "items": _PRESET_SUMMARY_SCHEMA}
+        },
+        "required": ["presets"],
+    },
+)
 def list_presets(
     query: Optional[str] = None,
     sort: str = "last_used",
@@ -177,7 +264,18 @@ def list_presets(
     return ToolResult(content=text, structured_content={"presets": records})
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    output_schema={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "preset": _PRESET_OBJECT_SCHEMA,
+            "prompt": {"type": "string"},
+        },
+        "required": ["name", "preset", "prompt"],
+    },
+)
 def get_preset(name_or_id: str) -> ToolResult:
     """Fetch a saved preset and its compiled prompt. To edit it visually,
     call open_preset_editor with its name instead."""
@@ -195,7 +293,13 @@ def get_preset(name_or_id: str) -> ToolResult:
     )
 
 
-@mcp.tool()
+@mcp.tool(
+    output_schema={
+        "type": "object",
+        "properties": {"deleted": {"type": "string"}},
+        "required": ["deleted"],
+    },
+)
 def delete_preset(name_or_id: str) -> ToolResult:
     """Delete a saved preset by name or id. Ask the user to confirm first."""
     deleted = get_store().delete(name_or_id)
