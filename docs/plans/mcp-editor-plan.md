@@ -107,29 +107,65 @@ Do NOT include: watermarks, extra text, people.
 
 Flujo estrella: `get_preset("promo dark")` → editor pre-cargado → ajusta paleta → `save_preset` → "ahora genera la imagen" → ChatGPT genera con el prompt compilado.
 
-## 8. Widget (Apps SDK)
+## 8. Widget (Apps SDK) — ingeniería
 
-- Editor por pasos en un solo iframe: **medida** (presets de aspect ratio) → **layout** (grid de thumbnails SVG dibujados — el momento "wow") → **elementos** (texto + zona en grid 3×3 clickeable) → **estilo/paleta** (color pickers) → **restricciones** (chips)
-- Panel lateral/inferior: **prompt compilándose en vivo** con cada click
-- Botones: Copy prompt · Save preset (dispara tool call con el JSON)
-- Lecciones ya aprendidas en frontera: reservar altura del iframe (no colapsa), protocolo Apps SDK actual, widget auto-actualizable
+UX: editor por pasos en un solo iframe: **medida** (presets de aspect ratio) → **layout** (grid de thumbnails SVG — el momento "wow") → **elementos** (texto + zona en grid 3×3 clickeable) → **estilo/paleta** (color pickers) → **restricciones** (chips). Panel con el **prompt compilándose en vivo** con cada click. Botones: Copy prompt · Save preset · **Generate 🎨**.
+
+Reglas de ingeniería (lo que hace un widget BUENO):
+
+1. **Un solo HTML autocontenido** servido como resource MCP (`ui://widget/editor.html`, mimeType `text/html+skybridge`). Iframe sandboxeado con CSP → JS/CSS/SVGs inline, nada de CDNs. Hay paso de build aunque el fuente esté en archivos separados.
+2. **`window.openai` es toda la API**:
+   - `setWidgetState()` en cada click → el editor sobrevive scroll/re-render (error #1 de widgets malos)
+   - `callTool("save_preset", …)` → el botón Save habla directo con el server
+   - `sendFollowUpMessage("Generate the image with this prompt: …")` → botón Generate mete el mensaje y ChatGPT genera; flujo completo sin teclear
+   - Altura reservada fija desde el primer render (lección frontera: iframe que colapsa)
+3. **Preview en vivo sin latencia**: `compiler.js` es un port JS del compilador Python. La divergencia la mata el diseño: **ambos compiladores corren contra los mismos archivos golden** — si el port se desvía un carácter, CI truena. Los goldens son el contrato entre lenguajes.
+4. **`structuredContent` vs `_meta`** en el tool result: el prompt compilado va en `structuredContent` (el modelo lo lee para generar); el estado interno del editor va en `_meta` (solo el widget, no gasta contexto).
+5. **Harness local**: `dev/mock-openai.js` finge `window.openai` → el widget se desarrolla en un browser normal, sin deploy ni ChatGPT. Iterar UI en segundos.
 
 ## 9. Estructura del repo
 
 ```
-README.md            ← EL PRODUCTO: GIF demo, deploy 1-click, Docker, conectar a ChatGPT paso a paso, FAQ
-core/                ← compilador puro + schemas + golden tests
-server/              ← FastMCP server (tools + storage SQLite)
-widget/              ← editor HTML/JS (Apps SDK)
-Dockerfile           ← correr en cualquier lado
+ai-mcp-editor/
+├── README.md                  ← el producto: demo GIF, deploy 1-click, conexión a ChatGPT, FAQ
+├── LICENSE                    ← MIT
+├── Dockerfile
+├── pyproject.toml
+├── core/                      ← EL CEREBRO (Python puro, cero deps de red)
+│   ├── schema.py              ← Pydantic: Preset v1
+│   ├── constants.py           ← 9 layouts, zonas 3×3, estilos, restricciones
+│   ├── compiler/
+│   │   ├── __init__.py        ← compile(preset) despacha por compiler_version
+│   │   └── v1.py              ← compilador v1, CONGELADO al publicar
+│   └── tests/
+│       ├── golden/            ← preset.json → expected_prompt.txt (contrato Python↔JS)
+│       └── test_compiler.py
+├── server/                    ← EL MCP (FastMCP)
+│   ├── app.py                 ← arranque, monta tools + widget resource
+│   ├── tools.py               ← las 6 tools
+│   ├── storage.py             ← SQLite (presets + timestamps)
+│   └── widget_resource.py     ← sirve ui://widget/editor.html
+└── widget/                    ← LA CARA (Apps SDK)
+    ├── src/
+    │   ├── index.html
+    │   ├── editor.js          ← estado + pasos + render
+    │   ├── compiler.js        ← port JS del compilador (live preview)
+    │   ├── layouts.js         ← thumbnails SVG
+    │   └── styles.css
+    ├── dev/mock-openai.js     ← window.openai falso para desarrollo en browser
+    └── build → un solo HTML inline
 ```
 
-## 10. Fases
+## 10. Fases / orden de construcción (cada paso deja algo que funciona)
 
-1. **v0.1** — core (compilador + golden tests) + MCP con `compile_preset` + widget editor básico + storage SQLite con save/list/get/delete. Sin auth. Demo grabada.
-2. **v0.2** — README de lujo: GIF del flujo completo, botones de deploy (Cloud Run/Railway/Render), guía paso a paso de conexión a ChatGPT con screenshots, FAQ.
-3. **v0.3** — pulir widget (thumbnails SVG finales, paletas predefinidas), export/import de presets como JSON portable.
-4. **Roadmap público** (README): galería comunitaria de presets, playground web, multi-user/OAuth (contribución bienvenida).
+1. **`core/`** — schema + constants + compiler v1 + goldens. Pure Python, pytest verde. Sin servidor.
+2. **`storage.py`** — SQLite con tests.
+3. **`server/`** — FastMCP con las 6 tools; probado con MCP Inspector (tools devuelven texto, sin widget).
+4. **`widget/`** — desarrollo en browser local contra el mock; aquí se quema el tiempo de UI iterando rápido.
+5. **Integración** — widget como resource, conectar a ChatGPT dev mode, flujo completo real. (El paso más frágil va al final, cuando cerebro y cara ya están probados por separado — solo se depura el pegamento.)
+6. **Empaque** — Dockerfile, deploy buttons, README con GIF, demo grabada.
+
+Versiones públicas: **v0.1** = pasos 1–5 sin pulir · **v0.2** = README de lujo + deploy buttons + guía con capturas · **v0.3** = pulido de widget, export/import de presets JSON · **Roadmap** (README): galería comunitaria de presets, playground web, multi-user/OAuth (contribución bienvenida).
 
 ## 11. Nombre del proyecto (pendiente — candidatos)
 
