@@ -15,6 +15,7 @@ from server.storage import PresetStore
 GOLDEN_DIR = Path(__file__).parents[2] / "core" / "tests" / "golden"
 FULL_PRESET = json.loads((GOLDEN_DIR / "full.json").read_text())
 FULL_PROMPT = (GOLDEN_DIR / "full.txt").read_text()
+PRODUCT_PRESET = json.loads((GOLDEN_DIR / "product_background.json").read_text())
 
 
 @pytest.fixture(autouse=True)
@@ -64,6 +65,23 @@ async def test_compile_rejects_invalid_preset(client: Client) -> None:
     bad = {**FULL_PRESET, "layout": "nope"}
     with pytest.raises(Exception, match="Invalid preset"):
         await client.call_tool("compile_preset", {"preset": bad})
+
+
+async def test_compile_reports_required_images(client: Client) -> None:
+    result = await client.call_tool("compile_preset", {"preset": PRODUCT_PRESET})
+    images = result.structured_content["required_images"]
+    assert [i["role"] for i in images] == ["product", "background"]
+    assert images[0]["index"] == 1
+    assert images[0]["placement"] == "center"
+    assert images[0]["hint"] == "the limited-edition red sneaker"
+    assert "Input images" in result.structured_content["prompt"]
+
+
+async def test_compile_without_images_returns_empty_required_images(
+    client: Client,
+) -> None:
+    result = await client.call_tool("compile_preset", {"preset": FULL_PRESET})
+    assert result.structured_content["required_images"] == []
 
 
 async def test_save_list_get_delete_cycle(client: Client) -> None:

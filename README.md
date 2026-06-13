@@ -15,6 +15,7 @@ You: *"I want to compose an image"* → the editor opens **inside the chat**:
 - **Size** — aspect ratio chips (1:1, 4:5, 9:16, 16:9, 3:2) or custom pixels
 - **Layout** — 9 visual patterns: full bleed, vertical/horizontal split, **diagonal split**, **2×2 grid**, 3 columns, hero + bar, frame, overlay
 - **Elements** — your exact texts (rendered verbatim) and subjects, each placed on a 3×3 position grid
+- **Product / Background** — image slots: add a product (placed on the grid or scattered all over) and/or a background. You don't upload here — the preset just *declares* the slots
 - **Style** — art style, color palette, typography, lighting
 - **Restrictions** — no watermarks, no extra text, no people… plus your own
 
@@ -72,6 +73,20 @@ Your MCP endpoint is **`https://YOUR-HOST/mcp`** — ChatGPT needs a publicly re
 | *"Save it as promo dark"* / **Save** | Preset stored on your instance |
 | *"List my presets"* | Names + when you last used each |
 | *"Open the one I used yesterday"* | Editor reopens pre-loaded |
+
+## Bring your own product & background
+
+Add a **Product** or **Background** element and the compiled prompt grows an *Input images* section:
+
+```
+Input images (the user will attach these, in order):
+  - Attached image 1 = PRODUCT ("the red sneaker") -> placed at center, integrate it realistically …
+  - Attached image 2 = BACKGROUND -> use it as the full-canvas background behind everything.
+```
+
+The widget never uploads anything — it only **declares the slots**. When you generate, ChatGPT sees the preset needs these images and asks you to attach them right there in the chat, then generates with the prompt + your photos. No storage, no buckets, no URLs.
+
+> Honest scope: the *prompt* stays deterministic (same preset → same text, always). The photos are yours to attach each time — the preset is the recipe, the images are the ingredients. How faithfully the model uses a reference image is up to ChatGPT's image tool, not us. Presets with image slots compile with **compiler v2**; older text-only presets keep compiling with v1, unchanged.
 
 ## Why deterministic prompts?
 

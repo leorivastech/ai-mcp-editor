@@ -10,10 +10,12 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from core.compiler.v1 import compile_v1
+from core.compiler.v2 import compile_v2
 from core.schema import Preset
 
 COMPILERS: dict[int, Callable[[Preset], str]] = {
     1: compile_v1,
+    2: compile_v2,
 }
 
 LATEST_COMPILER_VERSION = max(COMPILERS)

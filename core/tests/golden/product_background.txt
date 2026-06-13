@@ -1,0 +1,16 @@
+Output format: 1080x1350 pixels (4:5).
+
+Layout pattern: Hero layout: the image fills the upper 80% of the canvas, with a solid bar across the bottom.
+
+Input images (the user will attach these, in order):
+  - Attached image 1 = PRODUCT ("the limited-edition red sneaker") -> placed at center, integrate it realistically into the composition with matching lighting, perspective and shadows.
+  - Attached image 2 = BACKGROUND ("a concrete skate park at dusk") -> use it as the full-canvas background behind everything.
+
+Element placement:
+  - "DROPS FRIDAY" (text) -> positioned at bottom-center
+
+Visual style — art style: cinematic photo, color palette: #0b0b0b #ff3b3b, lighting: dramatic side lighting.
+
+Do NOT include: watermarks, any text other than the quoted texts.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

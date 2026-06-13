@@ -50,6 +50,13 @@ mcp = FastMCP(
         "sends a follow-up message), use the compiled prompt VERBATIM with "
         "your image generation tool — do not rewrite, summarize or embellish "
         "it; determinism is the whole point.\n\n"
+        "INPUT IMAGES: A preset may include product or background elements — "
+        "real photos the user supplies at generation time, listed in the "
+        "compiled prompt under 'Input images (the user will attach these...)'. "
+        "Before generating, if those images are not already attached to the "
+        "conversation, ask the user to upload them in the listed order, then "
+        "pass them to your image tool together with the compiled prompt. The "
+        "structured field required_images tells you how many and which.\n\n"
         "PRESETS: save_preset stores by name ('save it as promo dark'); "
         "list_presets supports natural recall ('the one I used yesterday' → "
         "sort=last_used); open_preset_editor with preset_name re-opens the "
@@ -76,6 +83,41 @@ def _validate(preset: dict[str, Any]) -> Preset:
             f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()
         )
         raise ToolError(f"Invalid preset: {issues}") from exc
+
+
+def _required_images(preset: Preset) -> list[dict[str, Any]]:
+    """Image slots (products/backgrounds) the user must attach to generate,
+    in the same order the compiled prompt references them."""
+    images: list[dict[str, Any]] = []
+    for el in preset.elements:
+        if el.kind not in ("product", "background"):
+            continue
+        item: dict[str, Any] = {"index": len(images) + 1, "role": el.kind}
+        if el.content:
+            item["hint"] = el.content
+        if el.kind == "product":
+            item["placement"] = el.zone or "center"
+        images.append(item)
+    return images
+
+
+_REQUIRED_IMAGES_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "description": (
+        "Input images the user must attach before generating, in order. "
+        "Empty if the preset needs none."
+    ),
+    "items": {
+        "type": "object",
+        "properties": {
+            "index": {"type": "integer"},
+            "role": {"type": "string", "enum": ["product", "background"]},
+            "hint": {"type": "string"},
+            "placement": {"type": "string"},
+        },
+        "required": ["index", "role"],
+    },
+}
 
 
 # --- widget resource ---------------------------------------------------------
@@ -149,8 +191,9 @@ _PRESET_SUMMARY_SCHEMA: dict[str, Any] = {
                 "type": ["string", "null"],
                 "description": "Compiled prompt of the pre-loaded preset",
             },
+            "required_images": _REQUIRED_IMAGES_SCHEMA,
         },
-        "required": ["loaded_preset_name", "prompt"],
+        "required": ["loaded_preset_name", "prompt", "required_images"],
     },
 )
 def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
@@ -158,6 +201,7 @@ def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
     preset_name to open it pre-loaded with a saved preset for editing."""
     preset_data: Optional[dict[str, Any]] = None
     prompt: Optional[str] = None
+    images: list[dict[str, Any]] = []
     if preset_name:
         record = get_store().get(preset_name)
         if record is None:
@@ -166,7 +210,9 @@ def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
                 "what is saved."
             )
         preset_data = record["preset"]
-        prompt = compile_preset(preset_data)
+        validated = _validate(preset_data)
+        prompt = compile_preset(validated)
+        images = _required_images(validated)
 
     text = (
         f"Editor opened with preset '{preset_name}' loaded."
@@ -179,6 +225,7 @@ def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
         structured_content={
             "loaded_preset_name": preset_name,
             "prompt": prompt,
+            "required_images": images,
         },
         meta={"preset": preset_data},
     )
@@ -193,9 +240,10 @@ def open_preset_editor(preset_name: Optional[str] = None) -> ToolResult:
             "prompt": {
                 "type": "string",
                 "description": "The deterministic compiled image prompt",
-            }
+            },
+            "required_images": _REQUIRED_IMAGES_SCHEMA,
         },
-        "required": ["prompt"],
+        "required": ["prompt", "required_images"],
     },
 )
 def compile_preset_tool(preset: dict[str, Any]) -> ToolResult:
@@ -203,7 +251,13 @@ def compile_preset_tool(preset: dict[str, Any]) -> ToolResult:
     preset always yields the exact same prompt."""
     validated = _validate(preset)
     prompt = compile_preset(validated)
-    return ToolResult(content=prompt, structured_content={"prompt": prompt})
+    return ToolResult(
+        content=prompt,
+        structured_content={
+            "prompt": prompt,
+            "required_images": _required_images(validated),
+        },
+    )
 
 
 @mcp.tool(

@@ -62,3 +62,50 @@ def test_empty_element_content_skipped() -> None:
     preset = json.loads((GOLDEN_DIR / "minimal.json").read_text())
     preset["elements"] = [{"kind": "text", "content": "   ", "zone": "center"}]
     assert "Element placement" not in compile_preset(preset)
+
+
+def test_v2_is_superset_of_v1_for_text_only() -> None:
+    """A text/subject-only preset compiles byte-identically under v1 and v2 —
+    so v2 is a safe superset and existing presets never drift."""
+    preset = json.loads((GOLDEN_DIR / "full.json").read_text())
+    v1_out = compile_preset({**preset, "compiler_version": 1})
+    v2_out = compile_preset({**preset, "compiler_version": 2})
+    assert v1_out == v2_out
+
+
+def test_v2_input_images_section() -> None:
+    preset = json.loads((GOLDEN_DIR / "product_background.json").read_text())
+    out = compile_preset(preset)
+    assert "Input images (the user will attach these, in order):" in out
+    assert "Attached image 1 = PRODUCT" in out
+    assert "Attached image 2 = BACKGROUND" in out
+    # Image slots must NOT leak into the text "Element placement" lines.
+    assert "(subject)" not in out
+
+
+def test_product_accepts_all_over_and_background_drops_zone() -> None:
+    p = Preset.model_validate(
+        {
+            "size": {"width": 1024, "height": 1024},
+            "layout": "full_bleed",
+            "elements": [
+                {"kind": "product", "content": "x", "zone": "all-over"},
+                {"kind": "background", "content": "y", "zone": "center"},
+            ],
+            "compiler_version": 2,
+        }
+    )
+    assert p.elements[0].zone == "all-over"
+    assert p.elements[1].zone is None  # background always covers the full canvas
+
+
+def test_product_rejects_bad_placement() -> None:
+    with pytest.raises(ValidationError):
+        Preset.model_validate(
+            {
+                "size": {"width": 1024, "height": 1024},
+                "layout": "full_bleed",
+                "elements": [{"kind": "product", "content": "x", "zone": "nowhere"}],
+                "compiler_version": 2,
+            }
+        )

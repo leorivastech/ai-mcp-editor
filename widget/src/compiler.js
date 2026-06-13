@@ -1,12 +1,15 @@
 /**
- * JS port of core/compiler/v1.py — MUST stay byte-identical to the Python
- * compiler. Both run against core/tests/golden/ (widget/test/golden.test.js
- * verifies this port). Never edit v1 strings after release; add a v2.
+ * JS port of core/compiler/ — MUST stay byte-identical to the Python
+ * compilers. Both run against core/tests/golden/ (widget/test/golden.test.js
+ * verifies this port). Never edit a released version's strings; add a new one.
+ *
+ * compile(preset) dispatches by preset.compiler_version, exactly like the
+ * Python core/compiler/__init__.py.
  */
 (function (root) {
   "use strict";
 
-  var COMPILER_VERSION = 1;
+  var LATEST_VERSION = 2;
 
   var LAYOUTS = {
     full_bleed:
@@ -42,40 +45,27 @@
     "as specified. Render every quoted text verbatim, with no spelling " +
     "changes or additions.";
 
-  function compile(preset) {
-    var parts = [];
+  // v2 vocabulary (mirrors core/constants.py).
+  var PRODUCT_DIRECTIVE =
+    "integrate it realistically into the composition with matching " +
+    "lighting, perspective and shadows";
+  var PRODUCT_ALL_OVER = "repeated across the whole canvas";
+  var BACKGROUND_DIRECTIVE =
+    "use it as the full-canvas background behind everything";
 
-    var size = preset.size;
+  // -- shared section builders (identical text in v1 and v2) ------------------
+
+  function sizeLine(size) {
     var label = size.aspect_label ? " (" + size.aspect_label + ")" : "";
-    parts.push(
-      "Output format: " + size.width + "x" + size.height + " pixels" + label + "."
-    );
+    return "Output format: " + size.width + "x" + size.height + " pixels" + label + ".";
+  }
 
-    parts.push("Layout pattern: " + LAYOUTS[preset.layout]);
-
-    var elementLines = [];
-    (preset.elements || []).forEach(function (el) {
-      var content = (el.content || "").trim();
-      if (!content) return;
-      if (el.kind === "text") {
-        elementLines.push(
-          '  - "' + content + '" (text) -> positioned at ' + el.zone
-        );
-      } else {
-        elementLines.push(
-          "  - " + content + " (subject) -> positioned at " + el.zone
-        );
-      }
-    });
-    if (elementLines.length) {
-      parts.push("Element placement:\n" + elementLines.join("\n"));
-    }
-
-    var style = preset.style || {};
-    var styleBits = [];
-    if (style.art_style) styleBits.push("art style: " + style.art_style.trim());
+  function styleLine(style) {
+    style = style || {};
+    var bits = [];
+    if (style.art_style) bits.push("art style: " + style.art_style.trim());
     if (style.palette && style.palette.length) {
-      styleBits.push(
+      bits.push(
         "color palette: " +
           style.palette
             .map(function (c) {
@@ -84,22 +74,47 @@
             .join(" ")
       );
     }
-    if (style.typography) styleBits.push("typography: " + style.typography.trim());
-    if (style.lighting) styleBits.push("lighting: " + style.lighting.trim());
-    if (styleBits.length) {
-      parts.push("Visual style — " + styleBits.join(", ") + ".");
-    }
+    if (style.typography) bits.push("typography: " + style.typography.trim());
+    if (style.lighting) bits.push("lighting: " + style.lighting.trim());
+    return bits.length ? "Visual style — " + bits.join(", ") + "." : null;
+  }
 
-    var restrictionBits = [];
-    (preset.restrictions || []).forEach(function (key) {
+  function restrictionsLine(restrictions) {
+    var bits = [];
+    (restrictions || []).forEach(function (key) {
       var phrase = Object.prototype.hasOwnProperty.call(RESTRICTION_PRESETS, key)
         ? RESTRICTION_PRESETS[key]
         : key.trim();
-      if (phrase) restrictionBits.push(phrase);
+      if (phrase) bits.push(phrase);
     });
-    if (restrictionBits.length) {
-      parts.push("Do NOT include: " + restrictionBits.join(", ") + ".");
+    return bits.length ? "Do NOT include: " + bits.join(", ") + "." : null;
+  }
+
+  // -- v1 (FROZEN) ------------------------------------------------------------
+
+  function compileV1(preset) {
+    var parts = [];
+    parts.push(sizeLine(preset.size));
+    parts.push("Layout pattern: " + LAYOUTS[preset.layout]);
+
+    var elementLines = [];
+    (preset.elements || []).forEach(function (el) {
+      var content = (el.content || "").trim();
+      if (!content) return;
+      if (el.kind === "text") {
+        elementLines.push('  - "' + content + '" (text) -> positioned at ' + el.zone);
+      } else {
+        elementLines.push("  - " + content + " (subject) -> positioned at " + el.zone);
+      }
+    });
+    if (elementLines.length) {
+      parts.push("Element placement:\n" + elementLines.join("\n"));
     }
+
+    var sl = styleLine(preset.style);
+    if (sl) parts.push(sl);
+    var rl = restrictionsLine(preset.restrictions);
+    if (rl) parts.push(rl);
 
     if (preset.free_text && preset.free_text.trim()) {
       parts.push("Additional details:\n" + preset.free_text.trim());
@@ -109,9 +124,83 @@
     return parts.join("\n\n");
   }
 
+  // -- v2 (FROZEN) — superset of v1 with an input-images section --------------
+
+  function compileV2(preset) {
+    var parts = [];
+    parts.push(sizeLine(preset.size));
+    parts.push("Layout pattern: " + LAYOUTS[preset.layout]);
+
+    var imageLines = [];
+    var n = 0;
+    (preset.elements || []).forEach(function (el) {
+      if (el.kind !== "product" && el.kind !== "background") return;
+      n++;
+      var content = (el.content || "").trim();
+      var hint = content ? ' ("' + content + '")' : "";
+      if (el.kind === "product") {
+        var placement =
+          el.zone === "all-over" ? PRODUCT_ALL_OVER : "placed at " + el.zone;
+        imageLines.push(
+          "  - Attached image " + n + " = PRODUCT" + hint + " -> " +
+            placement + ", " + PRODUCT_DIRECTIVE + "."
+        );
+      } else {
+        imageLines.push(
+          "  - Attached image " + n + " = BACKGROUND" + hint + " -> " +
+            BACKGROUND_DIRECTIVE + "."
+        );
+      }
+    });
+    if (imageLines.length) {
+      parts.push(
+        "Input images (the user will attach these, in order):\n" +
+          imageLines.join("\n")
+      );
+    }
+
+    var elementLines = [];
+    (preset.elements || []).forEach(function (el) {
+      if (el.kind !== "text" && el.kind !== "subject") return;
+      var content = (el.content || "").trim();
+      if (!content) return;
+      if (el.kind === "text") {
+        elementLines.push('  - "' + content + '" (text) -> positioned at ' + el.zone);
+      } else {
+        elementLines.push("  - " + content + " (subject) -> positioned at " + el.zone);
+      }
+    });
+    if (elementLines.length) {
+      parts.push("Element placement:\n" + elementLines.join("\n"));
+    }
+
+    var sl = styleLine(preset.style);
+    if (sl) parts.push(sl);
+    var rl = restrictionsLine(preset.restrictions);
+    if (rl) parts.push(rl);
+
+    if (preset.free_text && preset.free_text.trim()) {
+      parts.push("Additional details:\n" + preset.free_text.trim());
+    }
+
+    parts.push(CLOSING_LINE);
+    return parts.join("\n\n");
+  }
+
+  var COMPILERS = { 1: compileV1, 2: compileV2 };
+
+  function compile(preset) {
+    var version = (preset && preset.compiler_version) || 1;
+    var fn = COMPILERS[version];
+    if (!fn) throw new Error("Unknown compiler_version " + version);
+    return fn(preset);
+  }
+
   var api = {
     compile: compile,
-    COMPILER_VERSION: COMPILER_VERSION,
+    LATEST_VERSION: LATEST_VERSION,
+    // Back-compat: defaultPreset() historically read COMPILER_VERSION.
+    COMPILER_VERSION: 1,
     LAYOUTS: LAYOUTS,
     RESTRICTION_PRESETS: RESTRICTION_PRESETS,
   };

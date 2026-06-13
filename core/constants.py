@@ -59,7 +59,20 @@ ZONES: tuple[str, ...] = (
 )
 
 # --- Element kinds ---
-ELEMENT_KINDS: tuple[str, ...] = ("text", "subject")
+# text/subject are text-only (compiler v1+). product/background reference a
+# real photo the user attaches at generation time (compiler v2+).
+ELEMENT_KINDS: tuple[str, ...] = ("text", "subject", "product", "background")
+
+# --- v2 vocabulary: user-provided input images (products & backgrounds) ---
+# New in compiler v2; FROZEN at v2 release, same rule as the v1 strings above.
+# A product can be placed in any of the 9 zones, plus "all-over".
+PRODUCT_PLACEMENTS: tuple[str, ...] = ZONES + ("all-over",)
+PRODUCT_DIRECTIVE = (
+    "integrate it realistically into the composition with matching "
+    "lighting, perspective and shadows"
+)
+PRODUCT_ALL_OVER = "repeated across the whole canvas"
+BACKGROUND_DIRECTIVE = "use it as the full-canvas background behind everything"
 
 # --- Restriction presets (key → phrase used in the "Do NOT include" line).
 # Unknown restriction strings pass through verbatim (custom restrictions). ---

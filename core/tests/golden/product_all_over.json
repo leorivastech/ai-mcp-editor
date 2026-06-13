@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "sticker sheet",
+  "size": { "width": 1024, "height": 1024, "aspect_label": "1:1" },
+  "layout": "full_bleed",
+  "elements": [
+    { "kind": "product", "content": "the brand mascot sticker", "zone": "all-over" }
+  ],
+  "style": { "art_style": "flat illustration" },
+  "restrictions": [],
+  "compiler_version": 2
+}

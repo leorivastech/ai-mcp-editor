@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from core.constants import ELEMENT_KINDS, LAYOUTS, ZONES
+from core.constants import ELEMENT_KINDS, LAYOUTS, PRODUCT_PLACEMENTS, ZONES
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -46,9 +46,35 @@ class Size(BaseModel):
 class Element(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["text", "subject"]
-    content: str = Field(min_length=1, max_length=300)
-    zone: ZoneKey
+    kind: Literal["text", "subject", "product", "background"]
+    # text/subject: the verbatim text or subject description (required).
+    # product/background: an optional hint about the attached photo.
+    content: Optional[str] = Field(default=None, max_length=300)
+    # text/subject/product: a placement zone (product also allows "all-over").
+    # background: ignored — it always covers the whole canvas.
+    zone: Optional[str] = Field(default=None)
+
+    @model_validator(mode="after")
+    def _check_per_kind(self) -> "Element":
+        if self.kind in ("text", "subject"):
+            if not self.content:
+                raise ValueError(f"{self.kind} element requires content")
+            if self.zone not in ZONES:
+                raise ValueError(
+                    f"{self.kind} zone must be one of {ZONES}, got {self.zone!r}"
+                )
+        elif self.kind == "product":
+            placement = self.zone or "center"
+            if placement not in PRODUCT_PLACEMENTS:
+                raise ValueError(
+                    f"product placement must be one of {PRODUCT_PLACEMENTS}, "
+                    f"got {self.zone!r}"
+                )
+            self.zone = placement
+        elif self.kind == "background":
+            # A background always covers the full canvas — drop any zone.
+            self.zone = None
+        return self
 
 
 class Style(BaseModel):

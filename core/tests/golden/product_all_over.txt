@@ -1,0 +1,10 @@
+Output format: 1024x1024 pixels (1:1).
+
+Layout pattern: Full bleed: the image covers the entire canvas edge to edge, with text overlaid on top.
+
+Input images (the user will attach these, in order):
+  - Attached image 1 = PRODUCT ("the brand mascot sticker") -> repeated across the whole canvas, integrate it realistically into the composition with matching lighting, perspective and shadows.
+
+Visual style — art style: flat illustration.
+
+Follow the layout, element placement, palette and restrictions exactly as specified. Render every quoted text verbatim, with no spelling changes or additions.

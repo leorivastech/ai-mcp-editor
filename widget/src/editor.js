@@ -82,7 +82,13 @@
     }, 250);
   }
 
+  function hasKind(kind) {
+    return preset.elements.some(function (e) { return e.kind === kind; });
+  }
+
   function changed() {
+    // Presets that use product/background images need the v2 compiler.
+    if (hasKind("product") || hasKind("background")) preset.compiler_version = 2;
     renderPrompt();
     persist();
   }
@@ -228,6 +234,12 @@
   }
 
   function elementRow(el) {
+    if (el.kind === "product") return imageRow(el, "PRODUCT", true);
+    if (el.kind === "background") return imageRow(el, "BACKGROUND", false);
+    return textRow(el);
+  }
+
+  function textRow(el) {
     var kindBtn = h("button", {
       class: "kind-toggle",
       type: "button",
@@ -270,6 +282,67 @@
       : "What to draw, e.g. a steaming pizza";
   }
 
+  // Product placement: the same 3x3 grid as texts, plus an "All over" chip.
+  function productPlacement(el) {
+    var grid = h("div", { class: "zone-grid", title: "Position" });
+    var allBtn;
+    function sync() {
+      Array.prototype.forEach.call(grid.children, function (c) {
+        c.classList.toggle("on", c.dataset.zone === el.zone);
+      });
+      allBtn.classList.toggle("on", el.zone === "all-over");
+    }
+    ZONES.forEach(function (z) {
+      var cell = h("button", {
+        class: "zone-cell", type: "button", title: z,
+        onclick: function () { el.zone = z; sync(); changed(); },
+      });
+      cell.dataset.zone = z;
+      grid.appendChild(cell);
+    });
+    allBtn = h("button", {
+      class: "chip allover", type: "button", title: "Scatter across the whole canvas",
+      onclick: function () { el.zone = "all-over"; sync(); changed(); },
+    }, ["All over"]);
+    var wrap = h("div", { class: "placement" }, [grid, allBtn]);
+    sync();
+    return wrap;
+  }
+
+  // Product/background row: a fixed kind badge, an optional hint, and (for
+  // products) a placement picker. The image itself is NOT uploaded here —
+  // ChatGPT asks the user to attach it at generation time.
+  function imageRow(el, badge, withPlacement) {
+    var input = h("input", {
+      type: "text",
+      value: el.content || "",
+      placeholder: withPlacement
+        ? "Optional hint, e.g. the red sneaker"
+        : "Optional hint, e.g. a marble kitchen counter",
+      maxlength: 300,
+      oninput: function () { el.content = input.value; changed(); },
+    });
+    var del = h("button", {
+      class: "el-del", type: "button", title: "Remove",
+      onclick: function () {
+        preset.elements = preset.elements.filter(function (e) { return e !== el; });
+        row.remove();
+        changed();
+      },
+    }, ["✕"]);
+    var children = [
+      h("span", {
+        class: "kind-badge",
+        title: "You attach this photo in the chat when generating",
+      }, [badge]),
+      input,
+    ];
+    if (withPlacement) children.push(productPlacement(el));
+    children.push(del);
+    var row = h("div", { class: "el-row" }, children);
+    return row;
+  }
+
   function buildElements() {
     refs.elRows = h("div", { class: "el-rows" });
     preset.elements.forEach(function (el) {
@@ -277,14 +350,28 @@
     });
     function add(kind) {
       if (preset.elements.length >= 12) return toast("Max 12 elements", true);
-      var el = { kind: kind, content: "", zone: "center" };
+      // For now: at most one product and one background image slot.
+      if ((kind === "product" || kind === "background") && hasKind(kind)) {
+        return toast("One " + kind + " for now", true);
+      }
+      var el = kind === "background"
+        ? { kind: kind, content: "" }
+        : { kind: kind, content: "", zone: "center" };
       preset.elements.push(el);
       refs.elRows.appendChild(elementRow(el));
       changed();
     }
+    function addBtn(label, kind) {
+      return h("button", {
+        class: "btn", type: "button",
+        onclick: function () { add(kind); },
+      }, [label]);
+    }
     var btns = h("div", { class: "add-btns" }, [
-      h("button", { class: "btn", type: "button", onclick: function () { add("text"); } }, ["+ Text"]),
-      h("button", { class: "btn", type: "button", onclick: function () { add("subject"); } }, ["+ Subject"]),
+      addBtn("+ Text", "text"),
+      addBtn("+ Subject", "subject"),
+      addBtn("+ Product 🖼", "product"),
+      addBtn("+ Background 🖼", "background"),
     ]);
     return section("Elements", [refs.elRows, btns]);
   }
